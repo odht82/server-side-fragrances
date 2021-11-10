@@ -40,23 +40,23 @@ async function run() {
     try {
         await client.connect();
         const database = client.db('fragrance_shop');
-        const ordersCollection = database.collection('orders');
+        const productsCollection = database.collection('products');
         const usersCollection = database.collection('users');
 
-        app.get('/orders', verifyToken, async (req, res) => {
+        app.get('/products', verifyToken, async (req, res) => {
             const email = req.query.email;
             const date = req.query.date;
 
             const query = { email: email, date: date }
 
-            const cursor = ordersCollection.find(query);
-            const orders = await cursor.toArray();
-            res.json(orders);
+            const cursor = productsCollection.find(query);
+            const products = await cursor.toArray();
+            res.json(products);
         })
 
-        app.post('/orders', async (req, res) => {
+        app.post('/products', async (req, res) => {
             const appointment = req.body;
-            const result = await ordersCollection.insertOne(appointment);
+            const result = await productsCollection.insertOne(appointment);
             res.json(result)
         });
 
