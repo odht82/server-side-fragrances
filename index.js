@@ -42,6 +42,7 @@ async function run() {
         const database = client.db('fragrance_shop');
         const productsCollection = database.collection('products');
         const usersCollection = database.collection('users');
+        const reviewsCollection = database.collection('reviews');
 
         app.get('/products', verifyToken, async (req, res) => {
             const email = req.query.email;
@@ -69,6 +70,13 @@ async function run() {
                 isAdmin = true;
             }
             res.json({ admin: isAdmin });
+        })
+
+        app.get('/reviews', async (req, res) => {
+            const cursor = reviewsCollection.find({});
+            const reviews = await cursor.toArray();
+            console.log(reviews);
+            res.json(reviews);
         })
 
         app.post('/users', async (req, res) => {
