@@ -45,7 +45,7 @@ async function run() {
         const reviewsCollection = database.collection('reviews');
         const ordersCollection = database.collection('orders');
 
-        app.get('/orders', verifyToken, async (req, res) => {
+        app.get('/orders/own', verifyToken, async (req, res) => {
             const email = req.query.email;
             const query = { orderer: email }
             const cursor = ordersCollection.find(query);
@@ -53,17 +53,22 @@ async function run() {
             res.json(orders);
         })
 
-
-        app.get('/products', verifyToken, async (req, res) => {
-            const cursor = productsCollection.find({});
-            const products = await cursor.toArray();
-            res.json(products);
+        app.get('/orders', verifyToken, async (req, res) => {
+            const cursor = ordersCollection.find({});
+            const orders = await cursor.toArray();
+            res.json(orders);
         })
 
         app.post('/orders', async (req, res) => {
             const order = req.body;
             const result = await ordersCollection.insertOne(order);
             res.json(result)
+        })
+
+        app.get('/products', verifyToken, async (req, res) => {
+            const cursor = productsCollection.find({});
+            const products = await cursor.toArray();
+            res.json(products);
         })
 
         app.post('/products', async (req, res) => {
@@ -79,14 +84,40 @@ async function run() {
             let isAdmin = false;
             if (user?.role === 'admin') {
                 isAdmin = true;
+                res.json({ admin: isAdmin });
             }
-            res.json({ admin: isAdmin });
+            else {
+                isMember = true;
+                res.json({ member: isMember });
+            }
+        })
+
+        app.put('/users/member', verifyToken, async (req, res) => {
+            const user = req.body;
+            const requester = req.decodedEmail;
+            if (requester) {
+                const requesterAccount = await usersCollection.findOne({ email: requester });
+                if (requesterAccount.role === 'admin') {
+                    const filter = { email: user.email };
+                    const updateDoc = { $set: { role: 'member' } };
+                    const result = await usersCollection.updateOne(filter, updateDoc);
+                    res.json(result);
+                }
+            }
+            else {
+                res.status(403).json({ message: 'you do not have access to update admin' })
+            }
+        })
+
+        app.get('/users', verifyToken, async (req, res) => {
+            const cursor = usersCollection.find({});
+            const users = await cursor.toArray();
+            res.json(users);
         })
 
         app.get('/reviews', async (req, res) => {
             const cursor = reviewsCollection.find({});
             const reviews = await cursor.toArray();
-            console.log(reviews);
             res.json(reviews);
         })
 
