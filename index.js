@@ -43,21 +43,32 @@ async function run() {
         const productsCollection = database.collection('products');
         const usersCollection = database.collection('users');
         const reviewsCollection = database.collection('reviews');
+        const ordersCollection = database.collection('orders');
+
+        app.get('/orders', verifyToken, async (req, res) => {
+            const email = req.query.email;
+            const query = { orderer: email }
+            const cursor = ordersCollection.find(query);
+            const orders = await cursor.toArray();
+            res.json(orders);
+        })
+
 
         app.get('/products', verifyToken, async (req, res) => {
-            const email = req.query.email;
-            const date = req.query.date;
-
-            const query = { email: email, date: date }
-
-            const cursor = productsCollection.find(query);
+            const cursor = productsCollection.find({});
             const products = await cursor.toArray();
             res.json(products);
         })
 
+        app.post('/orders', async (req, res) => {
+            const order = req.body;
+            const result = await ordersCollection.insertOne(order);
+            res.json(result)
+        })
+
         app.post('/products', async (req, res) => {
-            const appointment = req.body;
-            const result = await productsCollection.insertOne(appointment);
+            const product = req.body;
+            const result = await productsCollection.insertOne(product);
             res.json(result)
         });
 
