@@ -3,7 +3,7 @@ const app = express()
 const cors = require('cors');
 const admin = require("firebase-admin");
 require('dotenv').config();
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectID } = require('mongodb');
 
 const port = process.env.PORT || 5000;
 
@@ -65,6 +65,40 @@ async function run() {
             res.json(result)
         })
 
+        app.post('/products', verifyToken, async (req, res) => {
+            const product = req.body;
+            const result = await productsCollection.insertOne(product);
+            res.json(result)
+        })
+
+        // DELETE ORDER ADMIN API
+        app.delete('/orders/:id', verifyToken, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectID(id) };
+            const result = await ordersCollection.deleteOne(query);
+            console.log('deleting order with id ', result);
+            res.json(result);
+        })
+
+        // DELETE OWN ORDER API
+        app.delete('/orders/own/:email', verifyToken, async (req, res) => {
+            const email = req.params.email;
+            const id = req.query.id;
+            const query = { _id: ObjectID(id) }
+            const result = await ordersCollection.deleteOne(query);
+            console.log('deleting order with id ', result);
+            res.json(result);
+        })
+
+        // DELETE REVIEW API
+        app.delete('/reviews/:id', verifyToken, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectID(id) };
+            const result = await reviewsCollection.deleteOne(query);
+            console.log('deleting review with id ', result);
+            res.json(result);
+        })
+
         app.get('/products', verifyToken, async (req, res) => {
             const cursor = productsCollection.find({});
             const products = await cursor.toArray();
@@ -76,6 +110,55 @@ async function run() {
             const result = await productsCollection.insertOne(product);
             res.json(result)
         });
+
+        app.get('/orders/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const order = await ordersCollection.findOne(query);
+            let isShipped = false;
+            if (order?.orderStatus === 'shipped') {
+                isShipped = true;
+                res.json({ sipping: isShipped });
+            }
+            else {
+                isPending = true;
+                res.json({ pending: isPending });
+            }
+        })
+
+        app.put('/orders/shipped', verifyToken, async (req, res) => {
+            const productId = req.body;
+            const requester = req.decodedEmail;
+            if (requester) {
+                const requesterAccount = await usersCollection.findOne({ email: requester });
+                if (requesterAccount.role === 'admin') {
+                    const filter = { productName: productId.productName, orderer: productId.email };
+                    const updateDoc = { $set: { orderStatus: 'shipped' } };
+                    const result = await ordersCollection.updateOne(filter, updateDoc);
+                    res.json(result);
+                }
+            }
+            else {
+                res.status(403).json({ message: 'you do not have access to make change' })
+            }
+        })
+
+        app.put('/orders/pending', verifyToken, async (req, res) => {
+            const productId = req.body;
+            const requester = req.decodedEmail;
+            if (requester) {
+                const requesterAccount = await usersCollection.findOne({ email: requester });
+                if (requesterAccount.role === 'admin') {
+                    const filter = { productName: productId.productName, orderer: productId.email };
+                    const updateDoc = { $set: { orderStatus: 'pending' } };
+                    const result = await ordersCollection.updateOne(filter, updateDoc);
+                    res.json(result);
+                }
+            }
+            else {
+                res.status(403).json({ message: 'you do not have access to make change' })
+            }
+        })
 
         app.get('/users/:email', async (req, res) => {
             const email = req.params.email;
@@ -119,6 +202,12 @@ async function run() {
             const cursor = reviewsCollection.find({});
             const reviews = await cursor.toArray();
             res.json(reviews);
+        })
+
+        app.post('/reviews', async (req, res) => {
+            const review = req.body;
+            const result = await reviewsCollection.insertOne(review);
+            res.json(result)
         })
 
         app.post('/users', async (req, res) => {
@@ -170,3 +259,17 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
     console.log(`listening at ${port}`)
 })
+
+
+
+
+// DELETE API
+// app.delete('/users/:id', async (req, res) => {
+//     const id = req.params.id;
+//     const query = { _id: ObjectId(id) };
+//     const result = await usersCollection.deleteOne(query);
+
+//     console.log('deleting user with id ', result);
+
+//     res.json(result);
+// })
